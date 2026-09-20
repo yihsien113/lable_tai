@@ -37,6 +37,128 @@ const vendorData = [
         { id: "E00179", name: "新生木業" }, { id: "E00189", name: "佳美" }, { id: "E00204", name: "世豐木業" }
     ];
 
+    // ====== 附件白名單與優先順序設定 ======
+    const accessoryPriority = {
+        "集成": 10,
+        "實木": 10,
+        "永集": 10,
+        "集6分": 10,
+        "+岩棉": 10,
+        "+料": 10,
+        "左右+1支": 10,
+        "四邊+1支": 10,
+        "鎖+強": 10,
+        "+洞": 10,
+        "+保麗龍": 10,
+        "+鎖洞▲": 18, 
+        "+鎖洞▼": 18, 
+        "+門擋料": 20,
+        "+丁雙洞": 20,
+        "+左右封邊": 20,
+        "+四邊封邊": 20,
+        "皮封四邊": 20,
+    };
+
+    const dropdownOptions = [
+       "實木", "集成" , "永集" , "集6分" , "+料", "左右+1支", "四邊+1支" , "+岩棉", "+洞", "鎖+強" , "+鎖洞▲", "+鎖洞▼", "+左右封邊", "+四邊封邊", "附左右封邊皮",  
+        "+門擋料" , "+丁雙洞" , "+保麗龍" ,  "組裝五金-喇房", "組裝五金-喇廁", "組裝五金-水房", "組裝五金-水廁", "烤雕", 
+        "幸福丁雙", "雷克拉丁雙" , "皮封四邊", "內左", "內右", "外左", "外右"
+    ];
+
+    function parseAndSortRemarks(rawText) {
+        if (!rawText) return { midSelects: [], midText: "", botSelects: [], botText: "" };
+        
+        // 1. 自動校正：把 ↑ 和 ↓ 換成 ▲ 和 ▼
+        let standardizedText = rawText
+            .replace(/\+鎖洞↑/g, '+鎖洞▲')
+            .replace(/\+鎖洞↓/g, '+鎖洞▼');
+
+        // 2. 換行轉空格
+        let cleanRaw = standardizedText.replace(/[\r\n]+/g, ' ');
+
+        // 3. 複合詞保護 (改良版)：直接把特定關鍵字內的 '+' 換成 '_PLUS_' 避免被誤切
+        let protectedText = cleanRaw
+            .replace(/鎖\+強/g, '鎖_PLUS_強')
+            .replace(/左右\+1支/g, '左右_PLUS_1支')
+            .replace(/四邊\+1支/g, '四邊_PLUS_1支')
+            .replace(/四\+1支/g, '四_PLUS_1支');
+
+        // 4. 將剩下的 '+' 前面統一補上空格，確保像 "皮封四邊+岩棉" 能被順利拆開
+        let formattedText = protectedText.replace(/\+/g, ' +');
+        let rawItems = formattedText.split(/[\s\/,]+/);
+        
+        // 5. 將保護的符號 '_PLUS_' 還原回 '+'
+        rawItems = rawItems.map(item => item.replace(/_PLUS_/g, '+'));
+        
+        // 6. 智慧過濾機制：過濾出白名單、選單選項或 +鎖洞組合
+        let validItems = rawItems.filter(item => {
+            let baseKey = item.replace(/[\d.]+$/, '');
+            if (accessoryPriority.hasOwnProperty(baseKey)) return true;
+            if (dropdownOptions.includes(baseKey)) return true; 
+            if (/^\+鎖洞[▲▼][\d.]+$/.test(item)) return true;
+            return false;
+        });
+        
+        if (validItems.length === 0) {
+            return { midSelects: [], midText: "", botSelects: [], botText: "" };
+        }
+        
+        // 7. 分類 10 級和 20 級項目 (如果沒特別設定為 10 級，一律丟到 20 級下排)
+        let items10 = [...new Set(validItems.filter(item => {
+            let key = item.replace(/[\d.]+$/, ''); 
+            return accessoryPriority[key] === 10;
+        }))];
+        
+        let items20 = [...new Set(validItems.filter(item => {
+            let key = item.replace(/[\d.]+$/, ''); 
+            return accessoryPriority[key] !== 10; 
+        }))];
+
+        // 8. 自動分配到上下兩行
+        if (items10.length > 1 && items20.length === 0) {
+            let half = Math.ceil(items10.length / 2);
+            items20 = items10.slice(half);
+            items10 = items10.slice(0, half);
+        }
+        else if (items20.length > 1 && items10.length === 0) {
+            let half = Math.ceil(items20.length / 2);
+            items10 = items20.slice(0, half);
+            items20 = items20.slice(half);
+        }
+
+        // 9. 下拉選單處理
+        let midSelects = [];
+        let midTextArray = [];
+        
+        items10.forEach(item => {
+            let baseKey = item.replace(/[\d.]+$/, ''); 
+            if (dropdownOptions.includes(baseKey)) {
+                midSelects.push(item);
+            } else {
+                midTextArray.push(item);
+            }
+        });
+
+        let botSelects = [];
+        let botTextArray = [];
+
+        items20.forEach(item => {
+            let baseKey = item.replace(/[\d.]+$/, '');
+            if (dropdownOptions.includes(baseKey)) {
+                botSelects.push(item); // 整個包含數字的詞塞進選單
+            } else {
+                botTextArray.push(item);
+            }
+        });
+
+        return { 
+            midSelects: midSelects, 
+            midText: midTextArray.join("."), 
+            botSelects: botSelects, 
+            botText: botTextArray.join(".") 
+        };
+    }
+
     const vendorModal = document.getElementById('vendorModal');
     const vendorInput = document.getElementById('vendorInput');
     const vendorDropdown = document.getElementById('vendorDropdown');
@@ -180,12 +302,6 @@ const vendorData = [
         btnAdd.style.backgroundColor = '#ff9500';
     }
 
-    const dropdownOptions = [
-       "實木", "永集" , "集6分" , "+料", "左右+1支", "四邊+1支" , "+岩棉", "+洞","+鎖洞▲", "+鎖洞▼", "+左右封邊", "+四邊封邊", "附左右封邊皮",  
-        "組裝五金-喇房", "組裝五金-喇廁", "組裝五金-水房", "組裝五金-水廁", "烤雕", 
-        "幸福牌丁雙", "雷克拉丁雙", "內左", "內右", "外左", "外右"
-    ];
-
     const datalist = document.createElement('datalist');
     datalist.id = 'shared-dropdown-options';
     dropdownOptions.forEach(opt => {
@@ -200,6 +316,10 @@ const vendorData = [
         const wrapper = document.createElement('div');
         wrapper.className = 'select-wrapper';
 
+        wrapper.draggable = true;
+        wrapper.id = 'select-wrapper-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        wrapper.style.cursor = 'grab';
+
         const input = document.createElement('input');
         input.type = 'text';
         input.setAttribute('list', 'shared-dropdown-options');
@@ -209,19 +329,100 @@ const vendorData = [
         const delBtn = document.createElement('button');
         delBtn.textContent = '取消';
         delBtn.className = 'btn-del-select';
-        delBtn.onclick = () => {
+        delBtn.onclick = function() {
+            const currentContainer = this.closest('[id^="select-container-"]');
+            const currentLine = currentContainer.id.split('-').pop();
             wrapper.remove();
-            updateLabelFromSelects(lineNumber);
+            updateLabelFromSelects(currentLine);
         };
 
-        input.oninput = () => {
-            updateLabelFromSelects(lineNumber);
+        input.oninput = function() {
+            const currentContainer = this.closest('[id^="select-container-"]');
+            const currentLine = currentContainer.id.split('-').pop();
+            updateLabelFromSelects(currentLine);
         };
+
+        wrapper.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', wrapper.id);
+            e.dataTransfer.effectAllowed = 'move';
+            wrapper.style.opacity = '0.5';
+        });
+
+        wrapper.addEventListener('dragend', () => {
+            wrapper.style.opacity = '1';
+        });
 
         wrapper.appendChild(input);
         wrapper.appendChild(delBtn);
         container.appendChild(wrapper);
     }
+
+    // ====== 計算拖曳時滑鼠位置最靠近的子元素 (實現上下排序) ======
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.select-wrapper:not([style*="opacity: 0.5"])')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // ====== 設定容器的拖曳投放與排序邏輯 ======
+    function setupDragAndDropForContainer(lineNumber) {
+        const container = document.getElementById(`select-container-${lineNumber}`);
+        if (!container) return;
+
+        container.style.minHeight = '42px';
+        container.style.minWidth = '100px';
+        container.style.padding = '4px';
+        container.style.borderRadius = '4px';
+        container.style.transition = 'background-color 0.2s ease';
+
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            container.style.backgroundColor = 'rgba(0, 122, 255, 0.1)';
+        });
+
+        container.addEventListener('dragleave', (e) => {
+            container.style.backgroundColor = '';
+        });
+
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            container.style.backgroundColor = '';
+            
+            const draggedId = e.dataTransfer.getData('text/plain');
+            const draggedElement = document.getElementById(draggedId);
+
+            if (draggedElement) {
+                const sourceContainer = draggedElement.parentElement;
+                const sourceLine = sourceContainer.id.split('-').pop();
+
+                // 根據滑鼠 Y 軸位置決定要插入在落點目標的前面或後面
+                const afterElement = getDragAfterElement(container, e.clientY);
+                if (afterElement == null) {
+                    container.appendChild(draggedElement);
+                } else {
+                    container.insertBefore(draggedElement, afterElement);
+                }
+
+                // 更新標籤內容（跨容器時更新兩邊，同容器時更新該容器）
+                if (sourceContainer !== container) {
+                    updateLabelFromSelects(sourceLine);
+                }
+                updateLabelFromSelects(lineNumber);
+            }
+        });
+    }
+
+    setupDragAndDropForContainer(2);
+    setupDragAndDropForContainer(3);
 
     function updateLabelFromSelects(line) {
         const container = document.getElementById(`select-container-${line}`);
@@ -232,7 +433,9 @@ const vendorData = [
             .filter(v => v !== '');
 
         const tagsEl = document.getElementById(`label-tags-${line}`);
-        tagsEl.textContent = values.length > 0 ? (' ' + values.join('.')) : '';
+        if(tagsEl) {
+            tagsEl.textContent = values.length > 0 ? (' ' + values.join('.')) : '';
+        }
 
         autoFitRight(document.getElementById(`label-wrapper-${line}`));
     }
@@ -657,8 +860,6 @@ const vendorData = [
         const printArea = document.getElementById('print-area');
         if (!container || !wrapper || !printArea) return;
 
-        // 以未縮放的 62mm 寬度為基準，視左側可用寬度自動縮放，
-        // 最大維持 2 倍，讓小螢幕上的預覽區更容易操作。
         const baseWidth = printArea.offsetWidth;
         const baseHeight = printArea.offsetHeight;
         const availableWidth = Math.max(1, container.clientWidth - 8);
@@ -692,47 +893,89 @@ const vendorData = [
         batchPrintContainer.innerHTML = '';
         document.title = '台尺標籤';
     });
+
     window.addEventListener('DOMContentLoaded', () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const dataParam = urlParams.get('data');
-    
-    if (dataParam) {
-        try {
-            const parsedData = JSON.parse(decodeURIComponent(dataParam));
-            const customerCode = parsedData.customer_code;
-            const items = parsedData.items;
+        const urlParams = new URLSearchParams(window.location.search);
+        const dataParam = urlParams.get('data');
+        
+        if (dataParam) {
+            try {
+                const parsedData = JSON.parse(decodeURIComponent(dataParam));
+                const customerCode = parsedData.customer_code;
+                const items = parsedData.items;
 
-            const previewVendor = document.getElementById('preview-vendor');
-            const heightInput = document.getElementById('height');
-            const widthInput = document.getElementById('width');
+                const previewVendor = document.getElementById('preview-vendor');
+                const heightInput = document.getElementById('height');
+                const widthInput = document.getElementById('width');
+                const labelItem2 = document.getElementById('label-item-2');
+                const labelItem3 = document.getElementById('label-item-3');
 
-            if (customerCode && previewVendor) {
-                const vendorMatch = vendorData.find(v => v.id.toUpperCase() === customerCode.toUpperCase());
-                if (vendorMatch) {
-                    previewVendor.innerText = vendorMatch.name;
-                } else {
-                    previewVendor.innerText = customerCode;
-                }
-                autoFitLeft(previewVendor);
-            }
-
-            if (items && items.length > 0) {
-                items.forEach(item => {
-                    if (item.height && item.width && heightInput && widthInput) {
-                        heightInput.value = item.height;
-                        widthInput.value = item.width;
-                        updateCalculations();
-                        
-                        const qty = parseInt(item.qty) || 1;
-                        for (let i = 0; i < qty; i++) {
-                            addToBatch();
-                        }
+                if (customerCode && previewVendor) {
+                    const vendorMatch = vendorData.find(v => v.id.toUpperCase() === customerCode.toUpperCase());
+                    if (vendorMatch) {
+                        previewVendor.innerText = vendorMatch.name;
+                    } else {
+                        previewVendor.innerText = customerCode;
                     }
-                });
-                window.history.replaceState({}, document.title, window.location.pathname);
+                    autoFitLeft(previewVendor);
+                }
+
+                if (items && items.length > 0) {
+                    items.forEach(item => {
+                        if (item.height && item.width && heightInput && widthInput) {
+                            heightInput.value = item.height;
+                            widthInput.value = item.width;
+                            updateCalculations();
+                            
+                            document.getElementById('select-container-2').innerHTML = '';
+                            document.getElementById('select-container-3').innerHTML = '';
+                            if (labelItem2) labelItem2.innerText = '';
+                            if (labelItem3) labelItem3.innerText = '';
+                            const tags2 = document.getElementById('label-tags-2');
+                            if (tags2) tags2.textContent = '';
+                            const tags3 = document.getElementById('label-tags-3');
+                            if (tags3) tags3.textContent = '';
+
+                            if (item.remarks) {
+                                const parsed = parseAndSortRemarks(item.remarks);
+                                
+                                if (parsed.midSelects.length > 0) {
+                                    parsed.midSelects.forEach(val => {
+                                        addSelect(2);
+                                        const inputs = document.querySelectorAll('#select-container-2 input');
+                                        inputs[inputs.length - 1].value = val;
+                                    });
+                                    updateLabelFromSelects(2);
+                                }
+                                if (labelItem2 && parsed.midText) {
+                                    labelItem2.innerText = parsed.midText;
+                                }
+                                if(document.getElementById('label-wrapper-2')) autoFitRight(document.getElementById('label-wrapper-2'));
+
+                                if (parsed.botSelects.length > 0) {
+                                    parsed.botSelects.forEach(val => {
+                                        addSelect(3);
+                                        const inputs = document.querySelectorAll('#select-container-3 input');
+                                        inputs[inputs.length - 1].value = val;
+                                    });
+                                    updateLabelFromSelects(3);
+                                }
+                                if (labelItem3 && parsed.botText) {
+                                    labelItem3.innerText = parsed.botText;
+                                }
+                                if(document.getElementById('label-wrapper-3')) autoFitRight(document.getElementById('label-wrapper-3'));
+                            }
+
+                            const qty = parseInt(item.qty) || 1;
+                            for (let i = 0; i < qty; i++) {
+                                addToBatch();
+                            }
+                        }
+                    });
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+            } catch (error) {
+                console.error("解析網址資料失敗:", error);
             }
-        } catch (error) {
-            console.error("解析網址資料失敗:", error);
         }
-    }
-});
+    });
