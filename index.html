@@ -116,7 +116,18 @@
             </div>
 
             <div class="batch-list" id="batchListContainer"></div>
-            <button class="btn-batch-print" onclick="printBatch()">批次列印 / 匯出多頁 PDF</button>
+            
+            <!-- 底部按鈕區塊 (優化 UI 版) -->
+            <div class="batch-bottom-actions">
+                <div class="batch-action-group">
+                    <button class="btn-batch-action btn-import" onclick="document.getElementById('importJsonInput').click()">📂 讀取標籤檔</button>
+                    <button class="btn-batch-action btn-export" onclick="exportBatchToJson()">💾 儲存標籤檔</button>
+                </div>
+                <button class="btn-batch-print" onclick="printBatch()">🖨️ 批次列印 / 匯出多頁 PDF</button>
+            </div>
+            
+            <!-- 隱藏的檔案上傳元素 -->
+            <input type="file" id="importJsonInput" accept=".json" style="display: none;" onchange="importBatchFromJson(event)">
         </div>
     </div>
 </div>

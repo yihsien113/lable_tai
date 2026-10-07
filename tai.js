@@ -990,3 +990,150 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+// ================= JSON 儲存與讀取功能 =================
+
+// 儲存標籤檔 (匯出 JSON) - 支援選擇儲存路徑並記憶上一次資料夾
+async function exportBatchToJson() {
+    if (batchItems.length === 0) {
+        alert('目前清單是空的，沒有可以儲存的標籤！');
+        return;
+    }
+    
+    // 將批次清單轉為 JSON 格式
+    const dataStr = JSON.stringify(batchItems, null, 2);
+    
+    // 判斷廠商名稱 (如果全部標籤都是同一個廠商，就用該廠商名；否則用"多廠商")
+    const vendorSet = new Set(batchItems.map(item => item.vendor));
+    const vendorName = vendorSet.size === 1 ? batchItems[0].vendor : '多廠商';
+
+    // 建立檔名：廠商名稱_日期_時分 (移除小數點)
+    const date = new Date();
+    const dateString = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+    const timeString = `${date.getHours().toString().padStart(2, '0')}${date.getMinutes().toString().padStart(2, '0')}`;
+    const defaultFilename = `${vendorName}_${dateString}_${timeString}.json`;
+
+    try {
+        // 嘗試呼叫現代瀏覽器的「另存新檔」視窗
+        if (window.showSaveFilePicker) {
+            const handle = await window.showSaveFilePicker({
+                id: 'tai-label-save-dir', // 讓瀏覽器記住上次開啟的資料夾 (針對台尺版獨立記憶)
+                suggestedName: defaultFilename,
+                types: [{
+                    description: 'JSON 標籤檔',
+                    accept: { 'application/json': ['.json'] },
+                }],
+            });
+            const writable = await handle.createWritable();
+            await writable.write(dataStr);
+            await writable.close();
+        } else {
+            // 如果瀏覽器不支援 (例如較舊的瀏覽器)，則使用傳統下載
+            fallbackDownload(dataStr, defaultFilename);
+        }
+    } catch (err) {
+        // 如果使用者在視窗按了「取消」會觸發 AbortError，我們忽略它
+        if (err.name !== 'AbortError') {
+            console.error('無法開啟儲存視窗，改用傳統下載:', err);
+            fallbackDownload(dataStr, defaultFilename);
+        }
+    }
+}
+
+// 傳統下載備用方案
+function fallbackDownload(dataStr, filename) {
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// 讀取標籤檔 (匯入 JSON) - 按鈕用
+function importBatchFromJson(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedItems = JSON.parse(e.target.result);
+            
+            if (Array.isArray(importedItems)) {
+                // 直接清除原本的清單，替換成新讀取的標籤
+                batchItems = importedItems;
+                
+                // 重設編輯狀態並更新畫面
+                resetEditMode();
+                updateBatchUI();
+            } else {
+                alert('檔案格式不正確，無法讀取標籤資料。');
+            }
+        } catch (error) {
+            alert('解析檔案時發生錯誤，請確認這是否為系統匯出的標籤檔。');
+            console.error(error);
+        }
+    };
+    reader.readAsText(file);
+    
+    // 清空 input，確保下次選同一個檔案也能觸發 onchange 事件
+    event.target.value = '';
+}
+
+// ================= 拖曳檔案直接讀取功能 =================
+
+// 當檔案拖進網頁範圍時，給點視覺回饋 (畫面變色)
+document.addEventListener('dragover', (e) => {
+    e.preventDefault(); 
+    document.body.style.opacity = "0.7"; 
+    document.body.style.background = "#e6f2ff"; 
+});
+
+// 當檔案離開網頁範圍時，恢復原狀
+document.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    document.body.style.opacity = "1";
+    document.body.style.background = "#f0f2f5";
+});
+
+// 當檔案在網頁上「放開」時，自動讀取
+document.addEventListener('drop', (e) => {
+    e.preventDefault(); 
+    document.body.style.opacity = "1";
+    document.body.style.background = "#f0f2f5";
+    
+    // 取得拖曳進來的檔案
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    // 檢查副檔名是不是 json
+    if (file.type !== "application/json" && !file.name.toLowerCase().endsWith('.json')) {
+        alert('格式錯誤：請丟入正確的 JSON 標籤檔！');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedItems = JSON.parse(e.target.result);
+            
+            if (Array.isArray(importedItems)) {
+                // 直接清除原本的清單，替換成新讀取的標籤
+                batchItems = importedItems;
+                
+                resetEditMode();
+                updateBatchUI();
+            } else {
+                alert('檔案格式不正確，無法讀取標籤資料。');
+            }
+        } catch (error) {
+            alert('解析檔案時發生錯誤，請確認這是否為系統匯出的標籤檔。');
+            console.error(error);
+        }
+    };
+    reader.readAsText(file);
+});

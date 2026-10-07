@@ -543,12 +543,6 @@
 
         .btn-remove { color: #ff3b30; background: none; border: none; cursor: pointer; font-weight: bold; padding: 4px 8px; flex-shrink: 0; font-size: 1.1rem;}
 
-        .btn-batch-print {
-            width: 100%; padding: 16px; font-size: 1.2rem; color: #fff; background-color: #007aff;
-            border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-top: auto;
-        }
-        .btn-batch-print:hover { background-color: #0056b3; }
-
         #batch-print-container { display: none; }
 
         .batch-item.editing {
@@ -595,4 +589,84 @@
             }
             .print-page:last-child { page-break-after: auto !important; break-after: auto !important; }
             .label-grid { width: 100% !important; height: 100% !important; max-height: 100% !important; box-sizing: border-box; }
+        }
+
+        /* ================= JSON 匯出/匯入與列印按鈕樣式 (優化版) ================= */
+        .batch-bottom-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .batch-action-group {
+            display: flex;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .btn-batch-action {
+            flex: 1;
+            padding: 12px;
+            font-size: 1.05rem;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-import {
+            background-color: #6c757d;
+            box-shadow: 0 4px 6px rgba(108, 117, 125, 0.2);
+        }
+
+        .btn-import:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(108, 117, 125, 0.3);
+        }
+
+        .btn-export {
+            background-color: #17a2b8;
+            box-shadow: 0 4px 6px rgba(23, 162, 184, 0.2);
+        }
+
+        .btn-export:hover {
+            background-color: #138496;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(23, 162, 184, 0.3);
+        }
+
+        /* 覆寫原本的 btn-batch-print 以統一風格 */
+        .btn-batch-print {
+            width: 100%;
+            padding: 16px;
+            font-size: 1.2rem;
+            color: #fff;
+            background-color: #007aff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 122, 255, 0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 0;
+        }
+
+        .btn-batch-print:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 122, 255, 0.3);
         }
