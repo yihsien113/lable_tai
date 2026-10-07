@@ -300,13 +300,23 @@
         }
 
         .auto-fit-left {
-            writing-mode: vertical-lr;
-            text-orientation: upright;
-            letter-spacing: 1px;
-            font-weight: bold;
-            justify-content: center;
-            cursor: pointer;
-        }
+    writing-mode: vertical-rl; 
+    text-orientation: upright;
+    letter-spacing: 1px;
+    font-weight: bold;
+    cursor: pointer;
+    
+    /* 雙軸強力置中 */
+    justify-content: center;
+    align-items: center;
+    
+    /* 消除字體預設行高造成的位移 */
+    line-height: 1;
+    transform: translateX(-0.12em); 
+    
+    /* ★ 新增這行：設定上下留白 4px，左右留白 2px，逼迫字體縮小 */
+    padding: 0px 5px; 
+}
 
         .auto-fit-right {
             padding: 0 4px;
