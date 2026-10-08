@@ -1011,7 +1011,7 @@ async function exportBatchToJson() {
     const date = new Date();
     const dateString = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
     const timeString = `${date.getHours().toString().padStart(2, '0')}${date.getMinutes().toString().padStart(2, '0')}`;
-    const defaultFilename = `${vendorName}_${dateString}_${timeString}.json`;
+    const defaultFilename = `台尺_${vendorName}_${dateString}_${timeString}.json`;
 
     try {
         // 嘗試呼叫現代瀏覽器的「另存新檔」視窗
